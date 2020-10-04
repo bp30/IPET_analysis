@@ -85,171 +85,148 @@ interaction.df<- IPET.df%>%
                       mutate(Perspective_C =group_center(Perspective.response,participant),
                              Help_C=group_center(help.response,participant))
 interaction.df$Condition<- droplevels(interaction.df$Condition)
-
-library (ggplot2)
-plot_H<- ggplot(IPET.df, aes(help.response))+
-              geom_histogram()
-plot_H
-plot_T<- ggplot(IPET.df, aes(trust.response))+
-              geom_histogram()
-plot_T
-
 ```
 
 
-#Main effect analysis
-##Repliction analysis: Willingness to help
-###Determine if clustering exist
+# Main effect analysis
+## Willingenss to help and Trust
+### Determine if clustering exist
 ```{r}
-#null model from above a compared with null model with an additiion of random effect of story
-null_help<- lmer(help.response~(1|participant)+(1|Story_ID), data=IPET.df)
-ranova(null_help)#significant so should include story as a random effect
+# Help
+ranova(lmer(help.response~(1|participant)+(1|Story_ID), data=IPET.df))
+#---------------------------------------------------------------------------------------------------------------
+# Trust 
+ranova(lmer(trust.response~(1|participant)+(1|Story_ID), data=IPET.df))
 ```
-
-###lmer models for main effect
+### Main effect models
 ```{r}
-# follow the parsimonious mixed model approach described by Bates 2015 which involve fitting a maximual model first the iteratively reduce random effect dimension to find the best model.
-zcp_model<- lmer(help.response~Condition+(dummy_est+dummy_img||participant)+(dummy_est+dummy_img||Story_ID), data= IPET.df)
-step(zcp_model)#suggest that dummy_est and dummy_img in story_ID should be deleted, adopting the 0.2 criteria used in Matuschek et al 2017
+# Parsimonious model -- Help
+step(lmer(help.response~Condition+(dummy_est+dummy_img||participant)+(dummy_est+dummy_img||Story_ID), data= IPET.df))
 rm_model<- lmer(help.response~Condition+(dummy_est+dummy_img||participant)+(1|Story_ID), data= IPET.df)
-#add in correlation parameter
-final_model_help<- lmer(help.response~Condition+(dummy_est+dummy_img|participant)+(1|Story_ID), data= IPET.df)
-anova(rm_model,final_model_help, refit=F)
-anova(final_model_help, test=' kenward-roger')
-```
-
-####Post hoc comparison
-```{r}
-emmeans(final_model_help, pairwise~Condition,adjust='bonferroni')
-confint(emmeans(final_model_help, pairwise~Condition, adjust='bonferroni'))
-```
-####Plot
-```{r}
-#Condition difference in willingness to help
-ggpredict(final_model_help, c('Condition'))%>% plot()
-#assess random effect relative to the means random effect
-plot_model(final_model_help, type= 're')
-
-#Identify as reference group
-final_model_help2<- lmer(help.response~dummy_est+dummy_img+(dummy_img+dummy_est|participant)+(1|Story_ID), data= IPET.df)
-Plot_LMM(final_model_help2, 'Identify', 'Estimate', 'Imagine',1)
-Plot_LMM(final_model_help2, 'Identify', 'Estimate', 'Imagine',2)
-Plot_LMM(final_model_help2, 'Identify', 'Estimate', 'Imagine',3)
-Plot_LMM(final_model_help2, 'Identify', 'Estimate', 'Imagine',4)
-#Imagine as reference group
-final_model_help3<- lmer(help.response~dummy_ident+dummy_img+(dummy_img+dummy_ident|participant)+(1|Story_ID), data= IPET.df)
-Plot_LMM(final_model_help3, 'Estimate', 'Identify', 'Imagine',1)
-Plot_LMM(final_model_help3, 'Estimate', 'Identify', 'Imagine',2)
-Plot_LMM(final_model_help3, 'Estimate', 'Identify', 'Imagine',3)
-Plot_LMM(final_model_help3, 'Estimate', 'Identify', 'Imagine',4)
-```
-####Effect size
-```{r}
-r.squaredGLMM(final_model_help)
-```
-
-####Assumption testing
-```{r}
-plot_model (final_model_help, type ='diag')
-```
-##Trust
-###Determine if clustering exist
-```{r} 
-#null model from above a compared with null model with an additiion of random effect of story
-null_trust<- lmer(trust.response~(1|participant)+(1|Story_ID), data=IPET.df)
-ranova(null_trust)#significant so should include story as a random effect
-```
-
-###lmer models for main effect
-```{r}
-zcp_trust<- lmer(trust.response~Condition+(dummy_est+dummy_img||participant)+(dummy_est+dummy_img||Story_ID), data= IPET.df)
-step(zcp_trust)#suggest that dummy_est in story_ID and participantshould be deleted. 
+fm_help<- lmer(help.response~Condition+(dummy_est+dummy_img|participant)+(1|Story_ID), data= IPET.df)
+anova(rm_model,fm_help, refit=F)
+# Results
+summary(fm_help)
+anova(fm_help, test=' kenward-roger')
+(posthoc_help<- emmeans(fm_help,pairwise~Condition,adjust='bonferroni'))
+confint(posthoc_help)
+r.squaredGLMM(fm_help)
+#---------------------------------------------------------------------------------------------------------------
+# Parsimonious model -- trust
+step(lmer(trust.response~Condition+(dummy_est+dummy_img||participant)+(dummy_est+dummy_img||Story_ID), data= IPET.df))
 rm_trust<- lmer(trust.response~Condition+(dummy_img||participant)+(dummy_img||Story_ID), data= IPET.df)
-rm_trust<- update(rm_trust, .~., start= getME(rm_trust, 'theta')) #refit twice
-#add in correlation parameter
+rm_trust<- refit_LMM(rm_trust) #refit 1 time
 fm_trust<- lmer(trust.response~Condition+(dummy_img|participant)+(dummy_img|Story_ID), data= IPET.df)
 anova(rm_trust,fm_trust,refit=F) #adding in correlation parameter does not include model fit so use 
-anova(fm_trust, test='kenward-roger')
+# Result
+summary(rm_trust)
+anova(rm_trust, ddf='kenward-roger')
+(posthoc_trust<- emmeans(rm_trust,pairwise~Condition,adjust='bonferroni'))
+confint(posthoc_trust)
+r.squaredGLMM(rm_trust)
 ```
-####Post hoc comparison
+#### Plots
 ```{r}
-emmeans(fm_trust, pairwise~Condition, adjust='bonferroni')
-confint (emmeans(fm_trust, pairwise~Condition, adjust='bonferroni'))
-```
-
-####Plot
-```{r}
-#Condition difference in willingness to help
-ggpredict(fm_trust, c('Condition'))%>% plot()
-
+# Help
+means_help<- data.frame(posthoc_help$emmeans)
+colnames(means_help)[1]<- "Conditions"
+bar_plot(means_help) + 
+  scale_x_discrete(labels=c("Identify Media Source", "Estimate Helping", "Imagine Helping")) +
+  xlab ("Simulation Condition")
+# Assess random effect relative to the means random effect
+plot_model(fm_help, type= 're')
+# Identify as reference group
+fm_help2<- lmer(help.response~dummy_est+dummy_img+(dummy_img+dummy_est|participant)+(1|Story_ID), data= IPET.df)
+Plot_LMM(fm_help2, 'Identify', 'Estimate', 'Imagine',1)
+Plot_LMM(fm_help2, 'Identify', 'Estimate', 'Imagine',2)
+Plot_LMM(fm_help2, 'Identify', 'Estimate', 'Imagine',3)
+Plot_LMM(fm_help2, 'Identify', 'Estimate', 'Imagine',4)
+#Imagine as reference group
+fm_help3<- lmer(help.response~dummy_ident+dummy_img+(dummy_img+dummy_ident|participant)+(1|Story_ID), data= IPET.df)
+Plot_LMM(fm_help3, 'Estimate', 'Identify', 'Imagine',1)
+Plot_LMM(fm_help3, 'Estimate', 'Identify', 'Imagine',2)
+Plot_LMM(fm_help3, 'Estimate', 'Identify', 'Imagine',3)
+Plot_LMM(fm_help3, 'Estimate', 'Identify', 'Imagine',4)
+#---------------------------------------------------------------------------------------------------------------------------------
+# Trust
+means_trust<- data.frame(posthoc_trust$emmeans)
+colnames(means_trust)[1]<- "Conditions"
+bar_plot(means_trust) + 
+  scale_x_discrete(labels=c("Identify Media Source", "Estimate Helping", "Imagine Helping")) +
+  xlab ("Simulation Condition") +
+  ylab ("Trust")
 #assess random effect relative to the means random effect
 plot_model(fm_trust, type= 're')
 
 #Identify as reference group
-fm_trust2<- lmer(trust.response~dummy_est+dummy_img+(dummy_img|participant)+(dummy_img|Story_ID), data= IPET.df)
+fm_trust2<- lmer(trust.response~dummy_est+dummy_img+(dummy_img||participant)+(dummy_img||Story_ID), data= IPET.df)
+fm_trust2<- refit_LMM(fm_trust2)
 Plot_LMM(fm_trust2, 'Identify', 'Estimate', 'Imagine',2)
-Plot_LMM(fm_trust2, 'Identify', 'Estimate', 'Imagine',3)
 Plot_LMM(fm_trust2, 'Identify', 'Estimate', 'Imagine',4)
 #Imagine as reference group
 fm_trust3<- lmer(trust.response~dummy_ident+dummy_img+(dummy_img|participant)+(dummy_img|Story_ID), data= IPET.df)
 Plot_LMM(fm_trust3, 'Estimate', 'Identify', 'Imagine',2)
-Plot_LMM(fm_trust3, 'Estimate', 'Identify', 'Imagine',3)
 Plot_LMM(fm_trust3, 'Estimate', 'Identify', 'Imagine',4)
-
-```
-####Effect size
-```{r}
-r.squaredGLMM(fm_trust)
 ```
 
-####Assumption testing
+#### Assumption testing and Power analyses
 ```{r}
-plot_model (fm_trust, type='diag')
-```
-###Power analysis
-```{r}
+# Help
+plot_model (fm_help, type ='diag')
+
+# Trust
+plot_model (fm_trust, type ='diag')
+#----------------------------------------------------------------------------------------------------------------------------
 #Help
-pcurve_help <- powerCurve(final_model_help, test=fcompare(help.response~1), along='participant')
+pcurve_help <- powerCurve(fm_help, test=fcompare(help.response~1), along='participant')
 plot(pcurve_help)
+
 #Trust
-pcurve_trust<-powerCurve(fm_trust, test=fcompare(trust.response~1), along='participant')
+pcurve_trust<-powerCurve(rm_trust, test=fcompare(trust.response~1), along='participant')
 plot(pcurve_trust)
 ```
 
-#Interaction analysis: Condition(estimate vs imagine)* Vividness measure
-##Willingness to help
-```{r}
-#Detail 
-help_zcp_det<- lmer (help.response~Condition*Detail_C+(dummy_img*Detail_C||participant)+(dummy_img*Detail_C||Story_ID),data= interaction.df)
-step(help_zcp_det)#everything from Story ID and  Detail_C in Participant removed
-help_rm_det<- lmer (help.response~Condition*Detail_C+(dummy_img+dummy_img:Detail_C||participant)+(1|Story_ID),data= interaction.df)
-#Add in correlations
-help_fm_det<- lmer (help.response~Condition*Detail_C+(dummy_img+dummy_img:Detail_C|participant)+(1|Story_ID),data= interaction.df)
-help_fm_det<- update(help_fm_det, .~., start= getME(help_fm_det, 'theta')) #refit once
-anova(help_rm_det,help_fm_det,refit=F)
-anova(help_fm_det, test='kenward-roger');summary(help_fm_det)
 
-#Coherence
-help_zcp_coh<- lmer (help.response~Condition*Coherence_C+(dummy_img*Coherence_C||participant)+(dummy_img*Coherence_C||Story_ID),
-                    data= interaction.df)
-step(help_zcp_coh) #remove all from story ID apart from Coherence_C, remove all from Participant apart from dummy_img
+#Interaction analysis: Condition(estimate vs imagine)* Vividness measure
+## Willingness to help
+```{r}
+# Detail 
+step(lmer (help.response~Condition*Detail_C+(dummy_img*Detail_C||participant)+(dummy_img*Detail_C||Story_ID),data= interaction.df))
+help_rm_det<- lmer (help.response~Condition*Detail_C+(dummy_img+dummy_img:Detail_C||participant)+(1|Story_ID),data= interaction.df)
+help_fm_det<- lmer (help.response~Condition*Detail_C+(dummy_img+dummy_img:Detail_C|participant)+(1|Story_ID),data= interaction.df)
+help_fm_det<- refit_LMM(help_fm_det)
+anova(help_rm_det,help_fm_det,refit=F)
+
+summary(help_fm_det); confint(help_fm_det, c("ConditionImagine", "Detail_C", "ConditionImagine:Detail_C"))
+anova(help_fm_det, ddf='Kenward-Roger')
+(posthoc_det_help<- emtrends(help_fm_det,pairwise~Condition,var='Detail_C'))
+confint(posthoc_det_help)
+r.squaredGLMM(help_fm_det)
+#-------------------------------------------------------------------------------------------------------------------------------------
+# Coherence
+step(lmer (help.response~Condition*Coherence_C+(dummy_img*Coherence_C||participant)+(dummy_img*Coherence_C||Story_ID), data=interaction.df)) 
 help_rm_coh<- lmer (help.response~Condition*Coherence_C+(dummy_img||participant)+(Coherence_C||Story_ID),data= interaction.df)
-#Add in correlation parameters
 help_fm_coh<- lmer (help.response~Condition*Coherence_C+(dummy_img|participant)+(Coherence_C|Story_ID),data= interaction.df)
 anova(help_rm_coh,help_fm_coh,refit=F)
-anova(help_fm_coh, test='kenward-roger');summary(help_fm_coh)
 
-#Scene
-help_zcp_scene<- lmer (help.response~Condition*Scene_C+(dummy_img*Scene_C||participant)+(dummy_img*Scene_C||Story_ID),
-                    data= interaction.df)
-step(help_zcp_scene)
+summary(help_fm_coh); confint(help_fm_coh, c("ConditionImagine", "Coherence_C", "ConditionImagine:Coherence_C"))
+anova(help_fm_coh, ddf='Kenward-Roger')
+(posthoc_coh_help<- emtrends(help_fm_coh,pairwise~Condition,var='Coherence_C'))
+confint(posthoc_coh_help)
+r.squaredGLMM(help_fm_coh)
+#-----------------------------------------------------------------------------------------------------------------------------------
+# Scene
+step(lmer (help.response~Condition*Scene_C+(dummy_img*Scene_C||participant)+(dummy_img*Scene_C||Story_ID),data= interaction.df))
 help_rm_scene<- lmer (help.response~Condition*Scene_C+(dummy_img||participant)+(Scene_C||Story_ID),data= interaction.df)
-#Add in correlation parameters
+help_rm_scene<- refit_LMM(help_rm_scene)
 help_fm_scene<- lmer (help.response~Condition*Scene_C+(dummy_img|participant)+(Scene_C|Story_ID),data= interaction.df)
 anova(help_rm_scene,help_fm_scene,refit=F)
-anova(help_fm_scene, test='kenward-roger');summary(help_fm_scene)
 
-
+summary(help_fm_scene); confint(help_fm_scene, c("ConditionImagine", "Scene_C", "ConditionImagine:Coherence_C"))
+anova(help_fm_scene, ddf='Kenward-Roger')
+(posthoc_scene_help<- emtrends(help_fm_scene,pairwise~Condition,var='Scene_C'))
+confint(posthoc_scene_help)
+r.squaredGLMM(help_fm_scene)
 ```
 
 ####Plot the effect
@@ -260,7 +237,7 @@ m<-mean(interaction.df$Detail_C)
 m-sd;m;m+sd;
 ggpredict(help_fm_det, c("Condition","Detail_C [-1.31,0,1.31]"))%>% plot()
 ggpredict(help_fm_det, c("Detail_C[-2.62,0,2.62]","Condition"))%>% plot()
-
+#-----------------------------------------------------------------------------------------------------------------------------------------
 #Coherence
 sd<-sd(interaction.df$Coherence_C)
 m<-mean(interaction.df$Coherence_C)
@@ -268,80 +245,66 @@ m-sd;m;m+sd;
 ggpredict(help_fm_coh, c("Condition","Coherence_C [-1.22,0,1.22]"))%>% plot()
 ggpredict(help_fm_coh, c("Coherence_C[-2.44,0,2.44]","Condition"))%>% plot()
 ```
-#### Effect size calculation
+#### Assumption testing and power analysis
 ```{r}
-#Detail
-r.squaredGLMM(help_fm_det)
-#Coherence
-r.squaredGLMM(help_fm_coh)
-```
-####Assumption testing
-```{r}
-#Detail
+# Detail
 plot_model (help_fm_det, type ='diag')
-#Coherence
-plot_model (help_fm_coh, type ='diag')
-```
 
-###Power analysis
-```{r}
-#Detail
+# Coherence
+plot_model (help_fm_coh, type ='diag')
+#------------------------------------------------------------------------------------------------------------------
+# Detail
 power_det<- lmer (help.response~Condition*Detail_C+(dummy_img|participant)+(1|Story_ID),data= interaction.df)
 pcurve_det_help<- powerCurve(power_det, test=fcompare(help.response~Condition), along='participant')
 plot(pcurve_det_help)
-#Coherence
+
+# Coherence
 pcurve_coh_help <- powerCurve(help_fm_coh, test=fcompare(help.response~Condition), along='participant')
-plot
-
-
-
-
-
-test<- lmer(Detail.response~Condition+(dummy_img|participant)+(0+dummy_img|Story_ID), data= interaction.df)
-summary(test)
-test<- update(test, .~., start= getME(test, 'theta')) #refit twice
-emmeans(test, pairwise~Condition, adjust= 'bonferroni')
-test2<- lmer(Coherence.response~Condition+(dummy_img|participant)+(0+dummy_img|Story_ID), data= interaction.df)
-summary(test2)
-emmeans(test2, pairwise~Condition, adjust= 'bonferroni')
+plot(pcurve_coh_help)
 ```
 
 
-##Trust 
+## Trust 
 
 ```{r}
-#Detail
-trust_det_zcp<- lmer (trust.response~Condition*Detail_C+(dummy_img*Detail_C||participant)+(dummy_img*Detail_C||Story_ID), data=interaction.df)
-trust_det_step<- step(trust_det_zcp)#remove dummy_img:detail_C from participant and Detail_C from story ID
+# Detail
+step(lmer (trust.response~Condition*Detail_C+(dummy_img*Detail_C||participant)+(dummy_img*Detail_C||Story_ID), data=interaction.df))
 trust_rm_det<- lmer (trust.response~Condition*Detail_C+(dummy_img+Detail_C||participant)+(dummy_img+dummy_img:Detail_C||Story_ID), data=interaction.df)
-trust_rm_det<- update(trust_rm_det, .~., start= getME(trust_rm_det, 'theta')) #refit twice
-#Add correlation
-trust_fm_det<- lmer (trust.response~Condition*Detail_C+(dummy_img+Detail_C|participant)+(dummy_img+dummy_img:Detail_C|Story_ID), data=interaction.df)
-summary(rePCA(trust_fm_det)); summary(trust_fm_det) #remove interaction and dummy_img from story_ID
-#Final model
+trust_rm_det<- refit_LMM(trust_rm_det) # refit twice
+trust_fm_det<- lmer (trust.response~Condition*Detail_C+(dummy_img+Detail_C|participant)+(dummy_img+dummy_img:Detail_C|Story_ID), data=interaction.df) # remove intercept and interaction from from story_ID, 0 variance for intercept and multiple refit fail for interaction
 trust_fm_det<- lmer (trust.response~Condition*Detail_C+(dummy_img+Detail_C|participant)+(0+dummy_img|Story_ID), data=interaction.df)
-trust_fm_det<- update(trust_fm_det, .~., start= getME(trust_fm_det, 'theta')) #refit twice
-anova(trust_rm_det,trust_fm_det, refit=F)
-summary(trust_fm_det);anova(trust_fm_det, test='kenward-roger')
+trust_fm_det<- refit_LMM(trust_fm_det) # refit one
 
+summary(trust_fm_det); confint(trust_fm_det, c("ConditionImagine", "Detail_C", "ConditionImagine:Detail_C"))
+anova(trust_fm_det, ddf='Kenward-Roger')
+(posthoc_det_trust<- emtrends(trust_fm_det,pairwise~Condition,var='Detail_C'))
+confint(posthoc_det_trust)
+r.squaredGLMM(trust_fm_det)
+#-----------------------------------------------------------------------------------------------------------------------------------------
 #Coherence
-trust_zcp_coh<- lmer (trust.response~Condition*Coherence_C+(dummy_img*Coherence_C||participant)+(dummy_img*Coherence_C||Story_ID), data=interaction.df)
-trust_step_coh<- step(trust_zcp_coh) #remove both interactions in participants and story ID as well as coherence_C from story ID
+step(lmer (trust.response~Condition*Coherence_C+(dummy_img*Coherence_C||participant)+(dummy_img*Coherence_C||Story_ID), data=interaction.df))
 trust_coh_rm<- lmer (trust.response~Condition*Coherence_C+(dummy_img+Coherence_C||participant)+(dummy_img||Story_ID), data=interaction.df)
-trust_coh_rm<- update(trust_coh_rm, .~., start= getME(trust_coh_rm, 'theta')) #one refit
-#add correlation 
-trust_fm_coh<- lmer (trust.response~Condition*Coherence_C+(dummy_img+Coherence_C|participant)+(dummy_img|Story_ID), data=interaction.df)
-summary(rePCA(trust_fm_coh)); summary(trust_fm_coh) #remove dummy_img from story_ID
-#final model
-trust_fm_coh<- lmer (trust.response~Condition*Coherence_C+(dummy_img+Coherence_C|participant)+(0+dummy_img|Story_ID), data=interaction.df)
-trust_fm_coh<- update(trust_fm_coh, .~., start= getME(trust_fm_coh, 'theta'))#one refit
-anova(trust_coh_rm,trust_fm_coh, refit=F)
-summary(trust_fm_coh);anova(trust_fm_coh, test='kenward-roger')
+trust_coh_rm<- refit_LMM(trust_coh_rm) # one refit
+trust_fm_coh<- lmer (trust.response~Condition*Coherence_C+(dummy_img+Coherence_C|participant)+(0+dummy_img|Story_ID), data=interaction.df) # remove intercept from story_ID, 0 variance
+trust_fm_coh<- refit_LMM(trust_fm_coh)# one refit
 
+summary(trust_fm_coh); confint(trust_fm_coh, c("ConditionImagine", "Coherence_C", "ConditionImagine:Coherence_C"))
+anova(trust_fm_coh, ddf='Kenward-Roger')
+(posthoc_coh_trust<- emtrends(trust_fm_coh,pairwise~Condition,var='Coherence_C'))
+confint(posthoc_coh_trust)
+r.squaredGLMM(trust_fm_coh)
+#-----------------------------------------------------------------------------------------------------------------------------------------
+# Scene
+step(lmer (trust.response~Condition*Scene_C+(dummy_img*Scene_C||participant)+(dummy_img*Scene_C||Story_ID), data=interaction.df))
+trust_scene_rm<- lmer (trust.response~Condition*Scene_C+(dummy_img+Scene_C||participant)+(dummy_img+dummy_img:Scene_C||Story_ID), data=interaction.df) # remove Scene from story ID due to singular fit
+trust_fm_scene<-lmer (trust.response~Condition*Scene_C+(dummy_img+Scene_C|participant)+(dummy_img|Story_ID), data=interaction.df) # remove interaction from story due to singular fit
+trust_fm_scene<- refit_LMM(trust_fm_scene) # 5 refit
 
-#Scene
-trust_fm_scene<- lmer (trust.response~Condition*Scene_C+(dummy_img+Scene_C|participant)+(0+dummy_img|Story_ID), data=interaction.df)
-summary(trust_fm_scene)
+summary(trust_fm_scene); confint(trust_fm_scene, c("ConditionImagine", "Scene_C", "ConditionImagine:Scene_C"))
+anova(trust_fm_scene, ddf='Kenward-Roger')
+(posthoc_scene_trust<- emtrends(trust_fm_scene,pairwise~Condition,var='Scene_C'))
+confint(posthoc_scene_trust)
+r.squaredGLMM(trust_fm_scene)
 ```
 
 ####Plot the effect
@@ -350,44 +313,29 @@ summary(trust_fm_scene)
 sd<-sd(interaction.df$Detail_C)
 m<-mean(interaction.df$Detail_C)
 m-sd;m;m+sd;
-ggpredict(trust_fm_det, c("Condition","Detail_C"))%>% plot(rawdata=T)
+ggpredict(trust_fm_det, c("Condition","Detail_C"))%>% plot()
 ggpredict(trust_fm_det, c("Detail_C[-4, 0, 4]","Condition"))%>% plot(limit=c(1,7),show.y.title=F, show.title=F, show.x.title=F, breaks= c(1,2,3,4,5,6,7))
-
-
+#-----------------------------------------------------------------------------------------------------------------------------------------
 #Coherence
 sd<-sd(interaction.df$Coherence_C)
 m<-mean(interaction.df$Coherence_C)
 m-sd;m;m+sd;
 ggpredict(trust_fm_coh, c("Condition","Coherence_C [-1.22,0,1.22]"))%>% plot()
 ggpredict(trust_fm_coh, c("Coherence_C[-2.44,0,2.44]","Condition"))%>% plot()
-
-
 ggpredict(trust_fm_scene, c("Scene_C[-4, 0, 4]","Condition"))%>% plot(limit=c(1,7),show.y.title=F, show.title=F, show.x.title=F, breaks= c(1,2,3,4,5,6,7))
-
 ```
-
-
-####Effect size calculation
-```{r}
-#Detail
-r.squaredGLMM(trust_fm_det)
-#Coherence
-r.squaredGLMM(trust_fm_coh)
-```
-
-####Assumption testing
+#### Assumption testing and power analysis
 ```{r}
 #Detail
 plot_model(trust_fm_det, type='diag')
+
 #Coherence
 plot_model(trust_fm_coh, type='diag')
-```
-
-###Power analysis
-```{r}
+#---------------------------------------------------------------------------------------------------------------
 #Detail
 pcurve_det_trust<- powerCurve(trust_fm_det, test=fcompare(trust.response~Condition), along='participant')
 plot(pcurve_det_trust)
+
 #Coherence
 power_trust<- lmer (trust.response~Condition*Coherence_C+(dummy_img|participant)+(1|Story_ID), data=interaction.df)
 pcurve_coh_trust <- powerCurve(power_trust, test=fcompare(trust.response~Condition), along='participant')
@@ -396,109 +344,95 @@ plot(pcurve_coh_trust)
 
 
 
-#Multilevel Mediation analysis
-##Willingness to help
+# Multilevel Mediation analysis
+## Willingness to help
 Perspective taking as mediator
-###Path a
+### Path a, b, c' and models
 ```{r}
 library(lmerTest)
 detach (package:lmerTest, unload=T)
-#Identify vs Imagine: path a
-med.fit_0v2_zcpHP<- lmer(Perspective.response~dummy_est +dummy_img+(dummy_est +dummy_img||participant), data= IPET.df)
-step(med.fit_0v2_zcpHP) #remove dummy_est 
-#Final model 
+#-----------------------------------------------------------------------------------------------------------------------------------------
+# Path a
+# Identify vs Imagine
+step(lmer(Perspective.response~dummy_est +dummy_img+(dummy_est +dummy_img||participant), data= IPET.df))
 med.fit_0v2_finalHP<- lmer(Perspective.response~dummy_est +dummy_img+(dummy_img|participant), data= IPET.df)
-summary(med.fit_0v2_finalHP)
 
-#Estimate vs Imagine
-med.fit_1v2_zcpHP<- lmer(Perspective.response~dummy_ident +dummy_img+(dummy_ident +dummy_img||participant), data= IPET.df)
-step(med.fit_1v2_zcpHP) #remove dummy_img 
-#Final model
+# Estimate vs Imagine
+step(lmer(Perspective.response~dummy_ident +dummy_img+(dummy_ident +dummy_img||participant), data= IPET.df))
 med.fit_1v2_FinalHP<- lmer(Perspective.response~dummy_ident +dummy_img+(dummy_ident|participant), data= IPET.df)
-summary(med.fit_1v2_FinalHP)
-```
-###Path b and c'
-```{r}
-#Identify vs Imagine: path b
-out.fit_0v2_zcpHP<- lmer(help.response~dummy_est +dummy_img+Perspective_C+(dummy_est +dummy_img +Perspective_C||participant), data= IPET.df)
-step(out.fit_0v2_zcpHP) #retain all
-#Final model
-out.fit_0v2_finalHP<- lmer(help.response~dummy_est +dummy_img+Perspective_C+(dummy_est +dummy_img|participant), data= IPET.df) #remove Perspective_C convergence failure
-summary(out.fit_0v2_finalHP)
 
-#Estimate vs Imagine: path b
-out.fit_1v2_zcpHP<- lmer(help.response~dummy_ident +dummy_img+Perspective_C+(dummy_ident +dummy_img +Perspective_C||participant), data= IPET.df)
-step(out.fit_1v2_zcpHP) #retain all
-#Final model
-out.fit_1v2_finalHP<- lmer(help.response~dummy_ident +dummy_img+Perspective_C+(dummy_ident +dummy_img |participant), data= IPET.df)#remove Perspective_C convergence failure
-summary(out.fit_1v2_finalHP)
-```
+# Summaries
+summary(med.fit_0v2_finalHP); summary(med.fit_1v2_FinalHP)
+#-----------------------------------------------------------------------------------------------------------------------------------------
+# Path b and c'
+# Identify vs Imagine: 
+step(lmer(help.response~dummy_est +dummy_img+Perspective_C+(dummy_est +dummy_img +Perspective_C||participant), data= IPET.df))
+out.fit_0v2_finalHP<- lmer(help.response~dummy_est +dummy_img+Perspective_C+(dummy_est+dummy_img|participant), data= IPET.df) # remove Perspective_C convergence failure
 
+# Estimate vs Imagine
+step(lmer(help.response~dummy_ident+dummy_img+Perspective_C+(dummy_ident+dummy_img+Perspective_C||participant), data= IPET.df))
+out.fit_1v2_finalHP<- lmer(help.response~dummy_ident+dummy_img+Perspective_C+(dummy_ident+dummy_img+Perspective_C|participant), data= IPET.df) # remove Perspective_C convergence failure
 
-###Mediation models
-```{r}
-#Identify vs Imagine
+# Summaries
+summary(out.fit_0v2_finalHP);summary(out.fit_1v2_finalHP)
+#-----------------------------------------------------------------------------------------------------------------------------------------
+# Mediation Models
+# Identify vs Imagine
 set.seed(67);med.out_0v2HP <-mediate (med.fit_0v2_finalHP, out.fit_0v2_finalHP, treat='dummy_img', mediator = 'Perspective_C')
 summary(med.out_0v2HP);plot(med.out_0v2HP)
-#Estimate vs Imagine
+
+# Estimate vs Imagine
 set.seed(67);med.out_1v2HP <-mediate (med.fit_1v2_FinalHP, out.fit_1v2_finalHP, treat='dummy_img', mediator='Perspective_C')
 summary(med.out_1v2HP);plot(med.out_1v2HP)
-#Identify vs Estimate
+
+# Identify vs Estimate
 set.seed(67);med.out_0v1HP <- mediate (med.fit_0v2_finalHP, out.fit_0v2_finalHP, treat='dummy_est', mediator = 'Perspective_C')
 summary(med.out_0v1HP)
 ```
 
 
-##Trust
-###Path a
+## Trust
+### Path a, b, c' and models
 ```{r}
+library(lmerTest)
 detach (package:lmerTest, unload=T)
-#Identify vs Imagine
-med.fit_0v2_zcpTH<- lmer(help.response~dummy_est +dummy_img+(dummy_est +dummy_img||participant), data= IPET.df)
-step(med.fit_0v2_zcpTH) #retain all 
-#final model
-med.fit_0v2_finalTH<- lmer(help.response~dummy_est +dummy_img+(dummy_est +dummy_img|participant), data= IPET.df)
-med.fit_0v2_finalTH<- update(med.fit_0v2_finalTH, .~., start= getME(med.fit_0v2_finalTH, 'theta')) #one refit
-summary(med.fit_0v2_finalTH)
+#-----------------------------------------------------------------------------------------------------------------------------------------
+# Path a
+# Identify vs Imagine
+step(lmer(help.response~dummy_est +dummy_img+(dummy_est+dummy_img||participant), data= IPET.df))
+med.fit_0v2_finalTH<- lmer(help.response~dummy_est+dummy_img+(dummy_est+dummy_img|participant), data= IPET.df)
 
-#Estimate vs Imagine
-med.fit_1v2_zcpTH<- lmer(help.response~dummy_ident +dummy_img+(dummy_ident +dummy_img||participant), data= IPET.df)
-step(med.fit_1v2_zcpTH) #retail all
-#final model
-med.fit_1v2_finalTH<- lmer(help.response~dummy_ident +dummy_img+(dummy_img+dummy_ident|participant), data= IPET.df)
-summary(med.fit_1v2_finalTH)
-```
-###Path b and c'
-```{r}
-#Identify vs Imagine
-out.fit_0v2_zcpTH<- lmer(trust.response~dummy_est +dummy_img +Help_C+(dummy_est +dummy_img +Help_C||participant), data= IPET.df)
-step(out.fit_0v2_zcpTH) #remove dummy_img and dummy_est
-#final model
+# Estimate vs Imagine
+step(lmer(help.response~dummy_ident +dummy_img+(dummy_ident +dummy_img||participant), data= IPET.df))
+med.fit_1v2_finalTH<- lmer(help.response~dummy_ident+dummy_img+(dummy_img+dummy_ident|participant), data= IPET.df)
+
+# Summary
+summary(med.fit_0v2_finalTH);summary(med.fit_1v2_finalTH)
+#-----------------------------------------------------------------------------------------------------------------------------------------
+# Path b and c'
+# Identify vs Imagine
+step(lmer(trust.response~dummy_est +dummy_img +Help_C+(dummy_est +dummy_img +Help_C||participant), data= IPET.df))
 out.fit_0v2_finalTH<- lmer(trust.response~dummy_est +dummy_img +Help_C+(Help_C|participant), data= IPET.df)
-summary(out.fit_0v2_finalTH)
 
-#Estimate vs Imagine
-out.fit_1v2_zcpTH<- lmer(trust.response~dummy_ident +dummy_img +Help_C+(dummy_ident +dummy_img +Help_C||participant), data= IPET.df)
-step(out.fit_1v2_zcpTH) #remove dummy_ident and dummy_img
-#final model
-out.fit_1v2_finalTH<- lmer(trust.response~dummy_ident +dummy_img +Help_C+(Help_C|participant), data= IPET.df)
-summary(out.fit_1v2_finalTH)
-```
+# Estimate vs Imagine
+step(lmer(trust.response~dummy_ident+dummy_img+Help_C+(dummy_ident+dummy_img+Help_C||participant), data= IPET.df))
+out.fit_1v2_finalTH<- lmer(trust.response~dummy_ident+dummy_img+Help_C+(Help_C|participant), data= IPET.df)
 
-
-###Mediation models
-```{r}
-#Identify vs Imagine
+# Summary
+summary(out.fit_0v2_finalTH); summary(out.fit_1v2_finalTH)
+#-----------------------------------------------------------------------------------------------------------------------------------------
+# Identify vs Imagine
 set.seed(67);med.out_0v2TH <- mediate (med.fit_0v2_finalTH, out.fit_0v2_finalTH, treat='dummy_img', mediator = 'Help_C')
 summary(med.out_0v2TH);plot(med.out_0v2TH)
-#Estimate vs Imagine
+
+# Estimate vs Imagine
 set.seed(67);med.out_1v2TH <-mediate (med.fit_1v2_finalTH, out.fit_1v2_finalTH, treat='dummy_img', mediator='Help_C')
 summary(med.out_1v2TH);plot(med.out_1v2TH)
-#Identify vs Estimate
+
+# Identify vs Estimate
 set.seed(67);med.out_0v1TH <- mediate (med.fit_0v2_finalTH, out.fit_0v2_finalTH, treat='dummy_est', mediator = 'Help_C')
 summary(med.out_0v1TH)
 ```
-
 
 
 # Multilevel moderated medaition 
