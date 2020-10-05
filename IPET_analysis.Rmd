@@ -436,37 +436,37 @@ summary(med.out_0v1TH)
 
 
 # Multilevel moderated medaition 
-##Perspective taking
-###Detail 
+## Perspective taking
+### Detail 
 ```{r}
 library(lmerTest)
 detach (package:lmerTest, unload=T)
+#-----------------------------------------------------------------------------------------------------------------------------------------
+# Detail
 interaction.df$imgdet_int<- interaction.df$dummy_img*interaction.df$Detail_C
-#Mediation effect across the 2 conditons
-med.fit_DP <- lmer (Perspective.response~dummy_img*Detail_C+(dummy_img+Detail_C|participant),data= interaction.df) #cannot have interaction effect when looking at the mediation effect separately
-med.fit_DP<- update(med.fit_DP, .~., start= getME(med.fit_DP, 'theta'))#one refit
+# Mediation effect across the 2 conditons
+med.fit_DP <- lmer (Perspective.response~dummy_img*Detail_C+(dummy_img+Detail_C|participant),data= interaction.df) # one refit
 out.fit_DP<- lmer (help.response~dummy_img*Detail_C+Perspective_C+(dummy_img+Perspective_C|participant),data= interaction.df)
 set.seed(67);Mod.Med_imgDP <- mediate(med.fit_DP, out.fit_DP,covariates = list(dummy_img = 1), treat="Detail_C", mediator="Perspective_C")
 set.seed(67);Mod.Med_estDP <- mediate(med.fit_DP, out.fit_DP, covariates = list(dummy_img = 0), treat="Detail_C", mediator="Perspective_C")
-#Moderated mediation analysis
-med.fit_DP2 <- lmer (Perspective.response~dummy_img+Detail_C+imgdet_int+(imgdet_int|participant),data= interaction.df) 
+
+# Moderated mediation analysis
+med.fit_DP2 <- lmer (Perspective.response~dummy_img+Detail_C+imgdet_int+(dummy_img+Detail_C|participant),data= interaction.df) 
 out.fit_DP2<- lmer (help.response~dummy_img+Detail_C+Perspective_C+imgdet_int+(dummy_img+Perspective_C|participant),data= interaction.df)
 set.seed(67);med.out_DP <- mediate (med.fit_DP2, out.fit_DP2, treat='imgdet_int', mediator = 'Perspective_C')
+
+# Summaries
 summary(Mod.Med_estDP);summary(Mod.Med_imgDP);summary(med.out_DP)
 summary(med.fit_DP);summary(out.fit_DP)
-#used to plot a
+
+# Used to plot a
 est_DP<- lmer (Perspective.response~Detail_C+(Detail_C|participant),data= subset(interaction.df, Condition=='Estimate')) 
 img_DP<- lmer (Perspective.response~Detail_C+(Detail_C|participant),data= subset(interaction.df, Condition=='Imagine')) 
 summary(est_DP);summary(img_DP)
-```
-
-
-###Coherence
-```{r}
-library(lmerTest)
-detach (package:lmerTest, unload=T)
+#-----------------------------------------------------------------------------------------------------------------------------------------
+# Coherence
 interaction.df$imgcoh_int<- interaction.df$dummy_img*interaction.df$Coherence_C
-#Mediation effect across the 2 conditons
+# Mediation effect across the 2 conditons
 med.fit_CP <- lmer (Perspective.response~dummy_img*Coherence_C+(Coherence_C|participant),data= interaction.df) 
 out.fit_CP<- lmer (help.response~dummy_img*Coherence_C+Perspective_C+(dummy_img+Perspective_C|participant),data= interaction.df)
 set.seed(67);Mod.Med_imgCP <- mediate(med.fit_CP, out.fit_CP,covariates = list(dummy_img = 1), treat="Coherence_C", mediator="Perspective_C")
@@ -481,12 +481,8 @@ summary(med.fit_DP);summary(out.fit_DP)
 est_CP<- lmer (Perspective.response~Coherence_C+(Coherence_C|participant),data= subset(interaction.df, Condition=='Estimate')) 
 img_CP<- lmer (Perspective.response~Coherence_C+(Coherence_C|participant),data= subset(interaction.df, Condition=='Imagine')) 
 summary(est_CP);summary(img_CP)
-```
-
-###Scene
-```{r}
-library(lmerTest)
-detach (package:lmerTest, unload=T)
+#-----------------------------------------------------------------------------------------------------------------------------------------
+# Scene
 interaction.df$imgscene_int<- interaction.df$dummy_img*interaction.df$Scene_C
 #Mediation effect across the 2 conditons
 med.fit_SP <- lmer (Perspective.response~dummy_img*Scene_C+(dummy_img+Scene_C|participant),data= interaction.df) 
@@ -506,6 +502,8 @@ img_SP<- update(img_SP, .~., start= getME(img_SP, 'theta'))#refit 4 times
 img_HP<- lmer (help.response~dummy_est*Scene_C+Perspective_C+(dummy_est+Perspective_C|participant),data= interaction.df)
 summary(img_SP); summary(img_HP)
 ```
+
+
 
 #Mediation effect across two conditions
 ##Help as a mediator
