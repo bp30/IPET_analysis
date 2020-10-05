@@ -106,7 +106,7 @@ rm_model<- lmer(help.response~Condition+(dummy_est+dummy_img||participant)+(1|St
 fm_help<- lmer(help.response~Condition+(dummy_est+dummy_img|participant)+(1|Story_ID), data= IPET.df)
 anova(rm_model,fm_help, refit=F)
 # Results
-summary(fm_help)
+summary(dummy_est+dummy_img)
 anova(fm_help, test=' kenward-roger')
 (posthoc_help<- emmeans(fm_help,pairwise~Condition,adjust='bonferroni'))
 confint(posthoc_help)
@@ -344,10 +344,8 @@ plot(pcurve_coh_trust)
 
 
 
-# Multilevel Mediation analysis
-## Willingness to help
-Perspective taking as mediator
-### Path a, b, c' and models
+# MLM Mediation analysis
+## Condition->Perspective->Help
 ```{r}
 library(lmerTest)
 detach (package:lmerTest, unload=T)
@@ -391,8 +389,7 @@ summary(med.out_0v1HP)
 ```
 
 
-## Trust
-### Path a, b, c' and models
+## Condition->Help->Trust
 ```{r}
 library(lmerTest)
 detach (package:lmerTest, unload=T)
@@ -436,28 +433,28 @@ summary(med.out_0v1TH)
 
 
 # Multilevel moderated medaition 
-## Perspective taking
-### Detail 
+## Vividness->Perspective->Help
 ```{r}
 library(lmerTest)
 detach (package:lmerTest, unload=T)
 #-----------------------------------------------------------------------------------------------------------------------------------------
 # Detail
 interaction.df$imgdet_int<- interaction.df$dummy_img*interaction.df$Detail_C
+
 # Mediation effect across the 2 conditons
-med.fit_DP <- lmer (Perspective.response~dummy_img*Detail_C+(dummy_img+Detail_C|participant),data= interaction.df) # one refit
+med.fit_DP <- lmer (Perspective.response~dummy_img*Detail_C+(imgdet_int|participant),data= interaction.df)
 out.fit_DP<- lmer (help.response~dummy_img*Detail_C+Perspective_C+(dummy_img+Perspective_C|participant),data= interaction.df)
 set.seed(67);Mod.Med_imgDP <- mediate(med.fit_DP, out.fit_DP,covariates = list(dummy_img = 1), treat="Detail_C", mediator="Perspective_C")
 set.seed(67);Mod.Med_estDP <- mediate(med.fit_DP, out.fit_DP, covariates = list(dummy_img = 0), treat="Detail_C", mediator="Perspective_C")
 
 # Moderated mediation analysis
-med.fit_DP2 <- lmer (Perspective.response~dummy_img+Detail_C+imgdet_int+(dummy_img+Detail_C|participant),data= interaction.df) 
+med.fit_DP2 <- lmer (Perspective.response~dummy_img+Detail_C+imgdet_int+(imgdet_int|participant),data= interaction.df) 
 out.fit_DP2<- lmer (help.response~dummy_img+Detail_C+Perspective_C+imgdet_int+(dummy_img+Perspective_C|participant),data= interaction.df)
 set.seed(67);med.out_DP <- mediate (med.fit_DP2, out.fit_DP2, treat='imgdet_int', mediator = 'Perspective_C')
 
 # Summaries
 summary(Mod.Med_estDP);summary(Mod.Med_imgDP);summary(med.out_DP)
-summary(med.fit_DP);summary(out.fit_DP)
+summary(med.fit_DP);summary(med.fit_DP2)
 
 # Used to plot a
 est_DP<- lmer (Perspective.response~Detail_C+(Detail_C|participant),data= subset(interaction.df, Condition=='Estimate')) 
@@ -466,17 +463,22 @@ summary(est_DP);summary(img_DP)
 #-----------------------------------------------------------------------------------------------------------------------------------------
 # Coherence
 interaction.df$imgcoh_int<- interaction.df$dummy_img*interaction.df$Coherence_C
+
 # Mediation effect across the 2 conditons
 med.fit_CP <- lmer (Perspective.response~dummy_img*Coherence_C+(Coherence_C|participant),data= interaction.df) 
 out.fit_CP<- lmer (help.response~dummy_img*Coherence_C+Perspective_C+(dummy_img+Perspective_C|participant),data= interaction.df)
 set.seed(67);Mod.Med_imgCP <- mediate(med.fit_CP, out.fit_CP,covariates = list(dummy_img = 1), treat="Coherence_C", mediator="Perspective_C")
 set.seed(67);Mod.Med_estCP <- mediate(med.fit_CP, out.fit_CP, covariates = list(dummy_img = 0), treat="Coherence_C", mediator="Perspective_C")
-#Moderated mediation analysis
+
+# Moderated mediation analysis
 med.fit_CP2 <- lmer (Perspective.response~dummy_img+Coherence_C+imgcoh_int+(Coherence_C|participant),data= interaction.df) 
 out.fit_CP2<- lmer (help.response~dummy_img+Coherence_C+Perspective_C+imgcoh_int+(dummy_img+Perspective_C|participant),data= interaction.df)
 set.seed(67);med.out_CP <- mediate (med.fit_CP2, out.fit_CP2, treat='imgcoh_int', mediator = 'Perspective_C')
+
+# Summaries
 summary(Mod.Med_estCP);summary(Mod.Med_imgCP);summary(med.out_CP)
 summary(med.fit_DP);summary(out.fit_DP)
+
 #used to plot a
 est_CP<- lmer (Perspective.response~Coherence_C+(Coherence_C|participant),data= subset(interaction.df, Condition=='Estimate')) 
 img_CP<- lmer (Perspective.response~Coherence_C+(Coherence_C|participant),data= subset(interaction.df, Condition=='Imagine')) 
@@ -484,184 +486,204 @@ summary(est_CP);summary(img_CP)
 #-----------------------------------------------------------------------------------------------------------------------------------------
 # Scene
 interaction.df$imgscene_int<- interaction.df$dummy_img*interaction.df$Scene_C
-#Mediation effect across the 2 conditons
-med.fit_SP <- lmer (Perspective.response~dummy_img*Scene_C+(dummy_img+Scene_C|participant),data= interaction.df) 
-med.fit_SP<- update(med.fit_SP, .~., start= getME(med.fit_SP, 'theta'))#refit 4 times
+
+# Mediation effect across the 2 conditons
+med.fit_SP <- lmer (Perspective.response~dummy_img*Scene_C+(imgscene_int|participant),data= interaction.df) 
 out.fit_SP<- lmer (help.response~dummy_img*Scene_C+Perspective_C+(dummy_img+Perspective_C|participant),data= interaction.df)
 set.seed(67);Mod.Med_imgSP <- mediate(med.fit_SP, out.fit_SP, covariates = list(dummy_img = 1), treat="Scene_C", mediator="Perspective_C")
 set.seed(67);Mod.Med_estSP <- mediate(med.fit_SP, out.fit_SP,covariates = list(dummy_img = 0), treat="Scene_C", mediator="Perspective_C")
-#Moderated mediation analysis
-med.fit_SP2 <- lmer (Perspective.response~dummy_img+Scene_C+imgscene_int+(imgscene_int|participant),data= interaction.df) 
+
+# Moderated mediation analysis
+med.fit_SP2 <- lmer (Perspective.response~dummy_img+Scene_C+imgscene_int+(imgscene_int|participant),data=interaction.df) 
 out.fit_SP2<- lmer (help.response~dummy_img+Scene_C+imgscene_int+Perspective_C+(dummy_img+Perspective_C|participant),data= interaction.df) 
 set.seed(67);med.out_SP <- mediate (med.fit_SP2, out.fit_SP2, treat='imgscene_int', mediator ='Perspective_C')
+
+# Summaries
 summary(Mod.Med_estSP);summary(Mod.Med_imgSP);summary(med.out_SP)
 summary(med.fit_SP);summary(out.fit_SP)
-#use for plotting SEs
+
+# use for plotting SEs
 img_SP <- lmer (Perspective.response~dummy_est*Scene_C+(dummy_est+Scene_C|participant),data= interaction.df) 
-img_SP<- update(img_SP, .~., start= getME(img_SP, 'theta'))#refit 4 times
+img_SP<- refit_LMM(img_SP)#refit 4 times
 img_HP<- lmer (help.response~dummy_est*Scene_C+Perspective_C+(dummy_est+Perspective_C|participant),data= interaction.df)
 summary(img_SP); summary(img_HP)
 ```
 
 
 
-#Mediation effect across two conditions
-##Help as a mediator
-###Detail
+## Vividness->Help->Trust
 ```{r}
 library(lmerTest)
 detach (package:lmerTest, unload=T)
-#Mediation effect across the 2 conditons
-med.fit_DH <- lmer (help.response~dummy_img*Detail_C+(dummy_img|participant),data= interaction.df) 
+#-------------------------------------------------------------------------------------------------------------------------------------------
+# Detail
+med.fit_DH <- lmer (help.response~dummy_img*Detail_C+(dummy_img+imgdet_int|participant),data= interaction.df) 
 out.fit_DH<- lmer (trust.response~dummy_img*(Detail_C+Help_C)+(Detail_C+Help_C|participant),data= interaction.df)
 set.seed(67);Mod.Med_imgDH <- mediate(med.fit_DH, out.fit_DH,covariates = list(dummy_img = 1), treat="Detail_C", mediator="Help_C")
 set.seed(67);Mod.Med_estDH <- mediate(med.fit_DH, out.fit_DH, covariates = list(dummy_img = 0), treat="Detail_C", mediator="Help_C")
-summary(Mod.Med_imgDH);summary(Mod.Med_estDH)
-plot(Mod.Med_imgDH)
-#used to plot a & b
+
+# Used to plot a & b
 est_DHa<- lmer (help.response~Detail_C+(1|participant),data= subset(interaction.df, Condition=='Estimate')) 
 img_DHa<- lmer (help.response~Detail_C+(Detail_C|participant),data= subset(interaction.df, Condition=='Imagine')) 
-summary(est_DHa);summary(img_DHa)
 est_DHb<- lmer (trust.response~Detail_C+Help_C+(Detail_C+Help_C|participant),data= subset(interaction.df, Condition=='Estimate')) 
-est_DHb<- update(est_DHb, .~., start= getME(est_DHb, 'theta'))
+est_DHb<- refit_LMM(est_DHb)
 img_DHb<- lmer (trust.response~Detail_C+Help_C+(Detail_C+Help_C|participant),data= subset(interaction.df, Condition=='Imagine'))
-img_DHb<- update(img_DHb, .~., start= getME(img_DHb, 'theta'))
-summary(est_DHb);summary(img_DHb)
-```
-###Coherence
-```{r}
-library(lmerTest)
-detach (package:lmerTest, unload=T)
-#Mediation effect across the 2 conditons
+img_DHb<- refit_LMM(img_DHb)
+
+# Summaries
+summary(Mod.Med_estDH);summary(Mod.Med_imgDH)
+summary(est_DHa);summary(img_DHa);summary(est_DHb);summary(img_DHb)
+#-------------------------------------------------------------------------------------------------------------------------------------------
+# Coherence
 med.fit_CH <- lmer (help.response~dummy_img*Coherence_C+(dummy_img|participant),data= interaction.df) 
 out.fit_CH<- lmer (trust.response~dummy_img*(Coherence_C+Help_C)+(Coherence_C+Help_C|participant),data= interaction.df)
 set.seed(67);Mod.Med_imgCH <- mediate(med.fit_CH, out.fit_CH,covariates = list(dummy_img = 1), treat="Coherence_C", mediator="Help_C")
 set.seed(67);Mod.Med_estCH <- mediate(med.fit_CH, out.fit_CH, covariates = list(dummy_img = 0), treat="Coherence_C", mediator="Help_C")
-summary(Mod.Med_imgCH);summary(Mod.Med_estCH)
-#used to plot a & b
+
+# Used to plot a & b
 est_CHa<- lmer (help.response~Coherence_C+(1|participant),data= subset(interaction.df, Condition=='Estimate')) 
 img_CHa<- lmer (help.response~Coherence_C+(Coherence_C|participant),data= subset(interaction.df, Condition=='Imagine')) 
-summary(est_CHa);summary(img_CHa)
 est_CHb<- lmer (trust.response~Coherence_C+Help_C+(Coherence_C+Help_C|participant),data= subset(interaction.df, Condition=='Estimate')) 
-est_CHb<- update(est_CHb, .~., start= getME(est_CHb, 'theta'))
+est_CHb<- refit_LMM(est_CHb)
 img_CHb<- lmer (trust.response~Coherence_C+Help_C+(Help_C|participant),data= subset(interaction.df, Condition=='Imagine'))
-summary(est_CHb);summary(img_CHb)
-```
-###Scene
-```{r}
-library(lmerTest)
-detach (package:lmerTest, unload=T)
-#Mediation effect across the 2 conditons
+
+# Summaries
+summary(Mod.Med_estCH);summary(Mod.Med_imgCH)
+summary(est_CHa);summary(img_CHa);summary(est_CHb);summary(img_CHb)
+#-------------------------------------------------------------------------------------------------------------------------------------------
+# Scene
+interaction.df$imghelp_int<- interaction.df$dummy_img*interaction.df$Help_C
+
 med.fit_SH <- lmer (help.response~dummy_img*Scene_C+(dummy_img|participant),data= interaction.df) 
-out.fit_SH<- lmer (trust.response~dummy_img*(Scene_C+Help_C)+(Scene_C+Help_C|participant),data= interaction.df)
+out.fit_SH<- lmer (trust.response~dummy_img*(Scene_C+Help_C)+(Scene_C+Help_C+imghelp_int|participant),data= interaction.df)
+out.fit_SH<- refit_LMM(out.fit_SH)
 set.seed(67);Mod.Med_imgSH <- mediate(med.fit_SH, out.fit_SH,covariates = list(dummy_img = 1), treat="Scene_C", mediator="Help_C")
 set.seed(67);Mod.Med_estSH <- mediate(med.fit_SH, out.fit_SH, covariates = list(dummy_img = 0), treat="Scene_C", mediator="Help_C")
-summary(Mod.Med_imgSH);summary(Mod.Med_estSH)
-#used to plot a & b
+
+# used to plot a & b
 est_SHa<- lmer (help.response~Scene_C+(1|participant),data= subset(interaction.df, Condition=='Estimate')) 
 img_SHa<- lmer (help.response~Scene_C+(Scene_C|participant),data= subset(interaction.df, Condition=='Imagine')) 
-summary(est_SHa);summary(img_SHa)
 est_SHb<- lmer (trust.response~Scene_C+Help_C+(Help_C|participant),data= subset(interaction.df, Condition=='Estimate')) 
-est_SHb<- update(est_SHb, .~., start= getME(est_SHb, 'theta'))
+est_SHb<- refit_LMM(est_SHb)
 img_SHb<- lmer (trust.response~Scene_C+Help_C+(Scene_C+Help_C|participant),data= subset(interaction.df, Condition=='Imagine'))
-img_SHb<- update(img_SHb, .~., start= getME(img_SHb, 'theta'))
-summary(est_SHb);summary(img_SHb)
+img_SHb<- refit_LMM(img_SHb)
+
+# Summaries
+summary(Mod.Med_estSH);summary(Mod.Med_imgSH)
+summary(est_SHa);summary(img_SHa);summary(est_SHb);summary(img_SHb)
 ```
 ###Plot
 ```{r}
-#Detail and coherence
-x<- seq(1,4)
-d<- c(0.30,0.30,0.02, 0.07)
-u<-c(0.20, 0.20, -0.06, -0.01)
-l<-c(0.42, 0.44,0.09, 0.15 )
-library(plotrix)
-plotCI(x, d, ui=l, li=u, ylim=c (-0.1, 0.45), xlim =c(1,4))
-#Scene 
-x<- seq(1,2)
-d<- c(0.36,0.05)
-u<-c(0.24, -0.02)
-l<-c(0.50, 0.14)
-library(plotrix)
-plotCI(x, d, ui=l, li=u, ylim=c (-0.05, 0.50), xlim =c(1,2))
+# Detail and coherence
+plot.df<- cbind.data.frame("Vividness"=c("Detail_Imagine", "Coherence_Imagine","Detail_Estimate", "Coherence_Estimate"), 
+                           "IE"= c(0.31,0.30,0.02, 0.07),
+                           "l_CI"=c(0.20, 0.20, -0.06, -0.01), 
+                           "u_CI"=c(0.42, 0.44,0.09, 0.15))
+ggplot(plot.df, aes(x=IE, y=Vividness)) +
+  geom_point() +
+  geom_errorbarh(aes(xmin=l_CI, xmax=u_CI), height=0.5) +
+  theme_classic() +
+  xlab("Indirect effects") +
+  ylab ("Conditions")
+
+
+# Scene 
+plot.df_scene<-cbind.data.frame("Vividness"=c("Scene_Imagine", "Scene_Estimate"), 
+                           "IE"= c(0.36,0.05),
+                           "l_CI"=c(0.24, -0.02), 
+                           "u_CI"=c(0.50, 0.14))
+ggplot(plot.df_scene, aes(x=IE, y=Vividness)) +
+  geom_point() +
+  geom_errorbarh(aes(xmin=l_CI, xmax=u_CI), height=0.5) +
+  theme_classic() +
+  xlab("Indirect effects") +
+  ylab ("Conditions")
 ```
 
 
 
-##trust as a mediator
-###Detail
+## Vividness->Trust->Help
 ```{r}
 library(lmerTest)
 detach (package:lmerTest, unload=T)
-#Mediation effect across the 2 conditons
-med.fit_DT <- lmer (trust.response~dummy_img*Detail_C+(dummy_img|participant),data= interaction.df) 
-out.fit_DT<- lmer (help.response~dummy_img*(Detail_C+Trust_C)+(Trust_C|participant),data= interaction.df)
+#-------------------------------------------------------------------------------------------------------------------------------------------
+# Detail
+med.fit_DT <- lmer (trust.response~dummy_img*Detail_C+(dummy_img+Detail_C|participant),data= interaction.df) 
+out.fit_DT<- lmer (help.response~dummy_img*(Detail_C+Trust_C)+(dummy_img +Trust_C|participant),data= interaction.df)
 set.seed(67);Mod.Med_imgDT <- mediate(med.fit_DT, out.fit_DT,covariates = list(dummy_img = 1), treat="Detail_C", mediator="Trust_C")
 set.seed(67);Mod.Med_estDT <- mediate(med.fit_DT, out.fit_DT, covariates = list(dummy_img = 0), treat="Detail_C", mediator="Trust_C")
-summary(Mod.Med_imgDT);summary(Mod.Med_estDT)
 
+# Used to plot a & b
 est_DTa<- lmer (trust.response~Detail_C+(1|participant),data= subset(interaction.df, Condition=='Estimate')) 
 img_DTa<- lmer (trust.response~Detail_C+(Detail_C|participant),data= subset(interaction.df, Condition=='Imagine')) 
-summary(est_DTa);summary(img_DTa)
 est_DTb<- lmer (help.response~Detail_C+Trust_C+(Trust_C|participant),data= subset(interaction.df, Condition=='Estimate')) 
 img_DTb<- lmer (help.response~Detail_C+Trust_C+(Detail_C+Trust_C|participant),data= subset(interaction.df, Condition=='Imagine'))
-summary(est_DTb);summary(img_DTb)
-```
-###Coherence
-```{r}
-library(lmerTest)
-detach (package:lmerTest, unload=T)
-#Mediation effect across the 2 conditons
-med.fit_CT <- lmer (trust.response~dummy_img*Coherence_C+(dummy_img|participant),data= interaction.df) 
-out.fit_CT<- lmer (help.response~dummy_img*(Coherence_C+Trust_C)+(Trust_C|participant),data= interaction.df)
+
+# Summaries
+summary(Mod.Med_estDT);summary(Mod.Med_imgDT)
+summary(est_DTa);summary(img_DTa);summary(est_DTb);summary(img_DTb)
+#-------------------------------------------------------------------------------------------------------------------------------------------
+# Coherence
+med.fit_CT <- lmer (trust.response~dummy_img*Coherence_C+(Coherence_C|participant),data= interaction.df) 
+out.fit_CT<- lmer (help.response~dummy_img*(Coherence_C+Trust_C)+(dummy_img+Trust_C|participant),data= interaction.df)
+out.fit_CT<- refit_LMM(out.fit_CT)
 set.seed(67);Mod.Med_imgCT <- mediate(med.fit_CT, out.fit_CT,covariates = list(dummy_img = 1), treat="Coherence_C", mediator="Trust_C")
 set.seed(67);Mod.Med_estCT <- mediate(med.fit_CT, out.fit_CT, covariates = list(dummy_img = 0), treat="Coherence_C", mediator="Trust_C")
-summary(Mod.Med_imgCT);summary(Mod.Med_estCT)
 
+# Used to plot a & b
 est_CTa<- lmer (trust.response~Coherence_C+(1|participant),data= subset(interaction.df, Condition=='Estimate')) 
 img_CTa<- lmer (trust.response~Coherence_C+(1|participant),data= subset(interaction.df, Condition=='Imagine')) 
-summary(est_CTa);summary(img_CTa)
 est_CTb<- lmer (help.response~Coherence_C+Trust_C+(Trust_C|participant),data= subset(interaction.df, Condition=='Estimate')) 
 img_CTb<- lmer (help.response~Coherence_C+Trust_C+(1|participant),data= subset(interaction.df, Condition=='Imagine'))
-summary(est_CTb);summary(img_CTb)
-```
-###Scene
-```{r}
-library(lmerTest)
-detach (package:lmerTest, unload=T)
-med.fit_ST <- lmer (trust.response~dummy_img*Scene_C+(dummy_img|participant),data= interaction.df) 
-out.fit_ST<- lmer (help.response~dummy_img*(Scene_C+Trust_C)+(Trust_C|participant),data= interaction.df)
+
+# Summaries
+summary(Mod.Med_estCT);summary(Mod.Med_imgCT)
+summary(est_CTa);summary(img_CTa);summary(est_CTb);summary(img_CTb)
+#-------------------------------------------------------------------------------------------------------------------------------------------
+# Scene
+med.fit_ST <- lmer (trust.response~dummy_img*Scene_C+(dummy_img+Scene_C|participant),data= interaction.df) 
+med.fit_ST<- refit_LMM(med.fit_ST)
+out.fit_ST<- lmer (help.response~dummy_img*(Scene_C+Trust_C)+(dummy_img+Trust_C|participant),data= interaction.df)
+out.fit_ST<- refit_LMM(out.fit_ST)
 set.seed(67);Mod.Med_imgST <- mediate(med.fit_ST, out.fit_ST,covariates = list(dummy_img = 1), treat="Scene_C", mediator="Trust_C")
 set.seed(67);Mod.Med_estST <- mediate(med.fit_ST, out.fit_ST, covariates = list(dummy_img = 0), treat="Scene_C", mediator="Trust_C")
-summary(Mod.Med_imgST);summary(Mod.Med_estST)
 
-
+# Used to plot a & b
 est_STa<- lmer (trust.response~Scene_C+(1|participant),data= subset(interaction.df, Condition=='Estimate')) 
 img_STa<- lmer (trust.response~Scene_C+(1|participant),data= subset(interaction.df, Condition=='Imagine')) 
-summary(est_STa);summary(img_STa)
 est_STb<- lmer (help.response~Scene_C+Trust_C+(1|participant),data= subset(interaction.df, Condition=='Estimate')) 
 img_STb<- lmer (help.response~Scene_C+Trust_C+(1|participant),data= subset(interaction.df, Condition=='Imagine'))
-summary(est_STb);summary(img_STb)
+
+# Summaries
+summary(Mod.Med_estST);summary(Mod.Med_imgST)
+summary(est_STa);summary(img_STa);summary(est_STb);summary(img_STb)
 ```
 ###Plot
 ```{r}
-#Detail and Cohernece
-x<- seq(1,4)
-d<- c(0.10,0.16,0.06, 0.08)
-u<-c(0.04, 0.10, -0.04, -0.02)
-l<-c(0.17, 0.25,0.16, 0.18 )
-plotCI(x, d, ui=l, li=u, ylim=c (-0.1, 0.25), xlim =c(1,4))
+# Detail and coherence
+plot.df2<- cbind.data.frame("Vividness"=c("Detail_Imagine", "Coherence_Imagine","Detail_Estimate", "Coherence_Estimate"), 
+                           "IE"= c(0.10,0.16,0.06, 0.08),
+                           "l_CI"=c(0.04, 0.10, -0.04, -0.02), 
+                           "u_CI"=c(0.17, 0.25,0.16, 0.18))
+ggplot(plot.df2, aes(x=IE, y=Vividness)) +
+  geom_point() +
+  geom_errorbarh(aes(xmin=l_CI, xmax=u_CI), height=0.5) +
+  theme_classic() +
+  xlab("Indirect effects") +
+  ylab ("Conditions")
 
-
-#Scene
-x<- seq(1,2)
-d<- c(0.15,0.08)
-u<-c(0.08, -0.03)
-l<-c(0.23, 0.20)
-plotCI(x, d, ui=l, li=u , xlim =c(1,2))
+# Scene 
+plot.df_scene2<-cbind.data.frame("Vividness"=c("Scene_Imagine", "Scene_Estimate"), 
+                           "IE"= c(0.15,0.08),
+                           "l_CI"=c(0.08, -0.03), 
+                           "u_CI"=c(0.23, 0.20))
+ggplot(plot.df_scene, aes(x=IE, y=Vividness)) +
+  geom_point() +
+  geom_errorbarh(aes(xmin=l_CI, xmax=u_CI), height=0.5) +
+  theme_classic() +
+  xlab("Indirect effects") +
+  ylab ("Conditions")
 ```
-
-
-
 #multilevel factor analysis:emotional reaction using combined dataset
 removed intrigued and intent.
 Have a 2 factor model with distress and empathy, as well as running a 3factor model of sympathy, distress and concern.
@@ -741,5 +763,13 @@ emtrends(distress_final_2fact, pairwise~Condition, var='Distress_C',adjust='bonf
 emmip(distress_final_2fact, Condition~Distress_C,cov.reduce = range)
 dim(IPET.df)
 ```
+
+
+
+
+
+
+
+
 
 
