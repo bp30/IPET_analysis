@@ -43,12 +43,17 @@ These measures are included to reduce the possibility of participants correctly 
 if (!require(pacman)) install.packages('pacman')
 #install and load packages
 pacman::p_load (sjstats,MuMIn,sjPlot,lme4,lmerTest,lattice,mediation,emmeans,ggeffects,simr,reshape,tidyverse, brms,bayestestR, ggplot2)
+
 #set working directory
 setwd('C:/Users/dpen466/Google Drive/Phd (1)/Experiment/Studies/Data/IPE/IPET/IPET/IPET_analysis/IPET_analysis/')
+
 #source custom functions
 source("C:/Users/dpen466/Google Drive/Phd (1)/Experiment/Studies/Data/IPE/source/Bayes_scripts.R")
 source("C:/Users/dpen466/Google Drive/Phd (1)/Experiment/Studies/Data/IPE/source/LMM_scripts.R")
 source('http://faculty.missouri.edu/huangf/data/mcfa/mcfa.R')
+
+# ggplot colours
+palette <- c("#eeaa7b", "#00b159", "#00aedb", "#F8766D", "#9590FF", "#CC9933", "#0000FF")
 ```
 
 
@@ -345,7 +350,7 @@ plot(pcurve_coh_trust)
 
 
 # MLM Mediation analysis
-## Condition->Perspective->Help
+## Condition -> Perspective -> Help
 ```{r}
 library(lmerTest)
 detach (package:lmerTest, unload=T)
@@ -389,7 +394,7 @@ summary(med.out_0v1HP)
 ```
 
 
-## Condition->Help->Trust
+## Condition -> Help -> Trust
 ```{r}
 library(lmerTest)
 detach (package:lmerTest, unload=T)
@@ -433,7 +438,7 @@ summary(med.out_0v1TH)
 
 
 # Multilevel moderated medaition 
-## Vividness->Perspective->Help
+## Vividness -> Perspective -> Help
 ```{r}
 library(lmerTest)
 detach (package:lmerTest, unload=T)
@@ -511,7 +516,7 @@ summary(img_SP); summary(img_HP)
 
 
 
-## Vividness->Help->Trust
+## Vividness -> Help -> Trust
 ```{r}
 library(lmerTest)
 detach (package:lmerTest, unload=T)
@@ -602,7 +607,7 @@ ggplot(plot.df_scene, aes(x=IE, y=Vividness)) +
 
 
 
-## Vividness->Trust->Help
+## Vividness -> Trust -> Help
 ```{r}
 library(lmerTest)
 detach (package:lmerTest, unload=T)
@@ -677,7 +682,7 @@ plot.df_scene2<-cbind.data.frame("Vividness"=c("Scene_Imagine", "Scene_Estimate"
                            "IE"= c(0.15,0.08),
                            "l_CI"=c(0.08, -0.03), 
                            "u_CI"=c(0.23, 0.20))
-ggplot(plot.df_scene, aes(x=IE, y=Vividness)) +
+ggplot(plot.df_scene2, aes(x=IE, y=Vividness)) +
   geom_point() +
   geom_errorbarh(aes(xmin=l_CI, xmax=u_CI), height=0.5) +
   theme_classic() +
@@ -767,9 +772,133 @@ dim(IPET.df)
 
 
 
+# Bayesian CLMM
+## Main effect analysis
+### Willingness to help
+```{r}
+Bayes_help<- brm(data=IPET.df, family=cumulative("logit"),
+                      formula= bf(help.response ~ Condition+(Condition|participant)+
+                      (Condition|Story_ID)) +
+                   lf(disc~ 0+Condition, cmc=F),
+                  prior= c(prior(normal (0.2,1), class=b, coef='ConditionImagine'), 
+                           prior (normal(0,1), class=b, coef='ConditionEstimate'),
+                           prior(normal(0,1.2), class=Intercept),
+                           prior(exponential(1), class= sd),
+                           prior(lkj(1), class = cor)), 
+                  iter=7000,warmup =2000, chains=8, cores=8, seed=20, sample_prior=T,save_all_pars = T)
+
+# Diagnostic Checks: pp check and traceplots
+pp_check(Bayes_help);plot(Bayes_help)
+# Rhat and sample sizes
+bayes_samples(Bayes_help)
+
+# Summary
+summary(Bayes_help, prob=0.89)
+# Evidence Ratios (not reported)
+(ER_help<-hypothesis(Bayes_help, hypothesis =c("ConditionImagine>0", "ConditionImagine - ConditionEstimate>0", "ConditionEstimate >0"),alpha=0.055, seed=67))
+# pd
+colMeans(ER_help$samples>0)
+# % in ROPE
+rope (ER_help$samples, ci=1, range = c(-0.1, 0.1))
+
+# OR
+OR_help<- exp(ER_help$samples)
+colnames(OR_help)<- c("Imagine-Identify", "Imagine-Estimate", "Estimate-Identify")
+posterior_summary(OR_help, probs = c(0.055, 0.945))
+
+# Extract posterior samples 
+set.seed(67);posterior_help<- posterior_samples(Bayes_help)
+# Latent SD of simulation conditions
+latent_SD(posterior_help)
+```
 
 
+#### Plots
+```{r}
+# Violin plots
+PSE_plots_help<- ER_help$samples
+colnames(PSE_plots_help)<- c("Identify", "Estimate", "Control_contrast")
+PSE_plots_help<- PSE_plots_help %>% gather("Identify", "Estimate","Control_contrast", key= Condition, value= Posterior)
+violin_PSE_help<- violin_bayes(PSE_plots_help, HDI_range=c(0.055, 0.945))[[1]]
+violin_PSE_help +
+  labs(x="Simulation Condition Contrasts", y = "Willingness to help (Logit)")+
+  theme(legend.position = "none") +
+  scale_x_discrete(labels=c( "Estimate>Identify", 
+                             "Imagine>Estimate ", 
+                             "Imagine>Identify")) +
+  scale_fill_manual(values=c(palette[4], palette[5], palette[3])) +
+  scale_color_manual(values = c(palette[4], palette[5], palette[3]))
+#-----------------------------------------------------------------------------------------------------------------------
+# Predicted probability in each response category
+PSE_pplot_help<-conditional_effects(Bayes_help,categorical=T)
+plot(PSE_pplot_help)[[1]] +
+  scale_x_discrete(labels=c("Identify Media Source", "Estimate Helping", "Imagine Helping")) +
+  theme_classic() +
+  xlab("Simulation Conditions") +
+  ylim (0, 0.45)
+```
+### Trust
+```{r}
+Bayes_Trust<- brm(data=IPET.df, family=cumulative("logit"),
+                      formula= bf(trust.response ~ Condition + (Condition|participant) +
+                      (Condition|Story_ID)) +
+                   lf(disc~ 0+Condition, cmc=F),
+                  prior= c(prior (normal(0,1), class=b),
+                           prior(normal(0,1.2), class=Intercept),
+                           prior(exponential(1), class= sd),
+                           prior(lkj(1), class = cor)), 
+                  iter=7000,warmup =2000, chains=8, cores=8, seed=20, sample_prior=T,save_all_pars = T)
 
+# Diagnostic Checks: pp check and traceplots
+pp_check(Bayes_Trust);plot(Bayes_Trust)
+# Rhat and sample sizes
+bayes_samples(Bayes_Trust)
+
+# Summary
+summary(Bayes_Trust, prob=0.89)
+# Evidence Ratios (not reported)
+(ER_trust<-hypothesis(Bayes_Trust, hypothesis =c("ConditionImagine>0", "ConditionImagine - ConditionEstimate>0", "ConditionEstimate >0"),alpha=0.055, seed=67))
+# pd
+colMeans(ER_trust$samples>0)
+# % in ROPE
+rope (ER_trust$samples, ci=1, range = c(-0.1, 0.1))
+
+# OR
+OR_trust<- exp(ER_trust$samples)
+colnames(OR_trust)<- c("Imagine-Identify", "Imagine-Estimate", "Estimate-Identify")
+posterior_summary(OR_trust, probs = c(0.055, 0.945))
+
+# Extract posterior samples 
+set.seed(67);posterior_trust<- posterior_samples(Bayes_Trust)
+# Latent SD of simulation conditions
+latent_SD(posterior_trust)
+```
+
+
+#### Plots
+```{r}
+# Violin plots
+PSE_plots_trust<- ER_trust$samples
+colnames(PSE_plots_trust)<- c("Identify", "Estimate", "Control_contrast")
+PSE_plots_trust<- PSE_plots_trust %>% gather("Identify", "Estimate","Control_contrast", key= Condition, value= Posterior)
+violin_PSE_Trust<- violin_bayes(PSE_plots_trust, HDI_range=c(0.055, 0.945))[[1]]
+violin_PSE_Trust  +
+  labs(x="Simulation Condition Contrasts", y = "Trust (Logit)")+
+  theme(legend.position = "none") +
+  scale_x_discrete(labels=c( "Estimate>Identify", 
+                             "Imagine>Estimate ", 
+                             "Imagine>Identify")) +
+  scale_fill_manual(values=c(palette[4], palette[5], palette[3])) +
+  scale_color_manual(values = c(palette[4], palette[5], palette[3]))
+#-----------------------------------------------------------------------------------------------------------------------
+# Predicted probability in each response category
+PSE_pplot_trust<-conditional_effects(Bayes_Trust,categorical=T)
+plot(PSE_pplot_trust)[[1]] +
+  scale_x_discrete(labels=c("Identify Media Source", "Estimate Helping", "Imagine Helping")) +
+  theme_classic() +
+  xlab("Simulation Conditions") +
+  ylim (0, 0.45)
+```
 
 
 
