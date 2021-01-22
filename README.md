@@ -1,7 +1,7 @@
 README:
 BACKGROUND:
 IPET is an experiment that aim to assess whether the prosocial simulation effect (PSE) (i.e., imagine helping a person will lead to an increase in willingness to help him/her) can be extended to trusting the person they imagined. The following research questions were assess:
-1. Replication the PSE in willingness to help.
+1. Replicate the PSE in willingness to help.
 2. Extend PSE to truts.
 3. Assess whether vividness of the simulated events plays a modulating role in PSE in willingness to help and trust. 
 4. Examine whether Perspective taking mediate the PSE effect in willingness to help.
