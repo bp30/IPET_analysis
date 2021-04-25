@@ -42,7 +42,7 @@ These measures are included to reduce the possibility of participants correctly 
 #Obtain necessary packages
 if (!require(pacman)) install.packages('pacman')
 #install and load packages
-pacman::p_load (sjstats,MuMIn,sjPlot,lme4,lmerTest,lattice,mediation,emmeans,ggeffects,simr,reshape,tidyverse, brms,bayestestR, ggplot2)
+pacman::p_load (sjstats,MuMIn,sjPlot,lme4,lmerTest,lattice,mediation,emmeans,ggeffects,simr,reshape,tidyverse, brms,bayestestR, ggplot2, gridExtra)
 
 #set working directory
 setwd('C:/Users/dpen466/Google Drive/Phd (1)/Experiment/Studies/Data/IPE/IPET/IPET/IPET_analysis/IPET_analysis/')
@@ -111,8 +111,8 @@ rm_model<- lmer(help.response~Condition+(dummy_est+dummy_img||participant)+(1|St
 fm_help<- lmer(help.response~Condition+(dummy_est+dummy_img|participant)+(1|Story_ID), data= IPET.df)
 anova(rm_model,fm_help, refit=F)
 # Results
-summary(dummy_est+dummy_img)
-anova(fm_help, test=' kenward-roger')
+summary(fm_help)
+anova(fm_help, ddf= 'Kenward-Roger')
 (posthoc_help<- emmeans(fm_help,pairwise~Condition,adjust='bonferroni'))
 confint(posthoc_help)
 r.squaredGLMM(fm_help)
@@ -125,7 +125,7 @@ fm_trust<- lmer(trust.response~Condition+(dummy_img|participant)+(dummy_img|Stor
 anova(rm_trust,fm_trust,refit=F) #adding in correlation parameter does not include model fit so use 
 # Result
 summary(rm_trust)
-anova(rm_trust, ddf='kenward-roger')
+anova(rm_trust, ddf= 'Kenward-Roger')
 (posthoc_trust<- emmeans(rm_trust,pairwise~Condition,adjust='bonferroni'))
 confint(posthoc_trust)
 r.squaredGLMM(rm_trust)
@@ -135,9 +135,9 @@ r.squaredGLMM(rm_trust)
 # Help
 means_help<- data.frame(posthoc_help$emmeans)
 colnames(means_help)[1]<- "Conditions"
-bar_plot(means_help) + 
+bar_plot(means_help, palette) + 
   scale_x_discrete(labels=c("Identify Media Source", "Estimate Helping", "Imagine Helping")) +
-  xlab ("Simulation Condition")
+  xlab ("Condition")
 # Assess random effect relative to the means random effect
 plot_model(fm_help, type= 're')
 # Identify as reference group
@@ -156,9 +156,9 @@ Plot_LMM(fm_help3, 'Estimate', 'Identify', 'Imagine',4)
 # Trust
 means_trust<- data.frame(posthoc_trust$emmeans)
 colnames(means_trust)[1]<- "Conditions"
-bar_plot(means_trust) + 
+bar_plot(means_trust, palette[4:6]) + 
   scale_x_discrete(labels=c("Identify Media Source", "Estimate Helping", "Imagine Helping")) +
-  xlab ("Simulation Condition") +
+  xlab ("Condition") +
   ylab ("Trust")
 #assess random effect relative to the means random effect
 plot_model(fm_trust, type= 're')
@@ -593,7 +593,7 @@ ggplot(plot.df, aes(x=IE, y=Vividness)) +
 
 
 # Scene 
-plot.df_scene<-cbind.data.frame("Vividness"=c("Scene_Imagine", "Scene_Estimate"), 
+plot.df_scene<-cbind.data.frame("Vividness"=c("Imagine Helping", "Estimate Helping"), 
                            "IE"= c(0.36,0.05),
                            "l_CI"=c(0.24, -0.02), 
                            "u_CI"=c(0.50, 0.14))
@@ -678,7 +678,7 @@ ggplot(plot.df2, aes(x=IE, y=Vividness)) +
   ylab ("Conditions")
 
 # Scene 
-plot.df_scene2<-cbind.data.frame("Vividness"=c("Scene_Imagine", "Scene_Estimate"), 
+plot.df_scene2<-cbind.data.frame("Vividness"=c("Imagine helping", "Estimate helping"), 
                            "IE"= c(0.15,0.08),
                            "l_CI"=c(0.08, -0.03), 
                            "u_CI"=c(0.23, 0.20))
@@ -689,7 +689,7 @@ ggplot(plot.df_scene2, aes(x=IE, y=Vividness)) +
   xlab("Indirect effects") +
   ylab ("Conditions")
 ```
-#multilevel factor analysis:emotional reaction using combined dataset
+#MLM factor analysis:emotional reaction using combined dataset
 removed intrigued and intent.
 Have a 2 factor model with distress and empathy, as well as running a 3factor model of sympathy, distress and concern.
 ```{r}
@@ -820,8 +820,8 @@ PSE_plots_help<- ER_help$samples
 colnames(PSE_plots_help)<- c("Identify", "Estimate", "Control_contrast")
 PSE_plots_help<- PSE_plots_help %>% gather("Identify", "Estimate","Control_contrast", key= Condition, value= Posterior)
 violin_PSE_help<- violin_bayes(PSE_plots_help, HDI_range=c(0.055, 0.945))[[1]]
-violin_PSE_help +
-  labs(x="Simulation Condition Contrasts", y = "Willingness to help (Logit)")+
+m1<-violin_PSE_help +
+  labs(x="Condition Contrasts", y = "Logit")+
   theme(legend.position = "none") +
   scale_x_discrete(labels=c( "Estimate>Identify", 
                              "Imagine>Estimate ", 
@@ -831,11 +831,14 @@ violin_PSE_help +
 #-----------------------------------------------------------------------------------------------------------------------
 # Predicted probability in each response category
 PSE_pplot_help<-conditional_effects(Bayes_help,categorical=T)
-plot(PSE_pplot_help)[[1]] +
+m2<-plot(PSE_pplot_help)[[1]] +
   scale_x_discrete(labels=c("Identify Media Source", "Estimate Helping", "Imagine Helping")) +
   theme_classic() +
-  xlab("Simulation Conditions") +
+  xlab("Condition") +
   ylim (0, 0.45)
+
+
+grid.arrange(m1,m2, ncol= 2)
 ```
 ### Trust
 ```{r}
@@ -882,22 +885,22 @@ PSE_plots_trust<- ER_trust$samples
 colnames(PSE_plots_trust)<- c("Identify", "Estimate", "Control_contrast")
 PSE_plots_trust<- PSE_plots_trust %>% gather("Identify", "Estimate","Control_contrast", key= Condition, value= Posterior)
 violin_PSE_Trust<- violin_bayes(PSE_plots_trust, HDI_range=c(0.055, 0.945))[[1]]
-violin_PSE_Trust  +
-  labs(x="Simulation Condition Contrasts", y = "Trust (Logit)")+
+m3<-violin_PSE_Trust  +
+  labs(x="Condition Contrasts", y = "Logit")+
   theme(legend.position = "none") +
   scale_x_discrete(labels=c( "Estimate>Identify", 
                              "Imagine>Estimate ", 
-                             "Imagine>Identify")) +
-  scale_fill_manual(values=c(palette[4], palette[5], palette[3])) +
-  scale_color_manual(values = c(palette[4], palette[5], palette[3]))
+                             "Imagine>Identify")) 
 #-----------------------------------------------------------------------------------------------------------------------
 # Predicted probability in each response category
 PSE_pplot_trust<-conditional_effects(Bayes_Trust,categorical=T)
-plot(PSE_pplot_trust)[[1]] +
+m4<-plot(PSE_pplot_trust)[[1]] +
   scale_x_discrete(labels=c("Identify Media Source", "Estimate Helping", "Imagine Helping")) +
   theme_classic() +
-  xlab("Simulation Conditions") +
+  xlab("Condition") +
   ylim (0, 0.45)
+
+grid.arrange(m3, m4, ncol= 2)
 ```
 
 ### Vividness measures by simulation condition interactions
@@ -965,12 +968,13 @@ latent_SD(posterior_coh_help)
 
 ##### Plots
 ```{r}
+
 # Violin plots -- Detail: Separate Conditions
 det_posterior_help<- cbind.data.frame('Estimate Helping' = posterior_det_help$b_Detail_C, "Imagine Helping" = posterior_det_help$b_Detail_C + posterior_det_help$`b_ConditionImagine:Detail_C`)
 plot_det_help<- det_posterior_help %>% gather("Estimate Helping", "Imagine Helping", key= Condition, value= Posterior)
 violin_det_help<- violin_bayes(plot_det_help, HDI_range= c(0.055, 0.945))[[1]]
-violin_det_help +
-  labs(x="Simulation Condition", y = "Willingness to help (logit)") +
+f1<-violin_det_help +
+  labs(x="Condition", y = "Logit") +
   theme(legend.position='none') +
   ylim(-0.5, 1.5) +
   scale_fill_manual(values=c(palette[2], palette[3])) +
@@ -987,12 +991,16 @@ posterior_summary(exp(det_posterior_help), probs=c(0.055, 0.945))
 coh_posterior_help<- cbind.data.frame('Estimate Helping' = posterior_coh_help$b_Coherence_C, "Imagine Helping" = posterior_coh_help$b_Coherence_C + posterior_coh_help$`b_ConditionImagine:Coherence_C`)
 plot_coh_help<- coh_posterior_help %>% gather("Estimate Helping", "Imagine Helping", key= Condition, value= Posterior)
 violin_coh_help<- violin_bayes(plot_coh_help,HDI_range= c(0.055, 0.945))[[1]]
-violin_coh_help +
-  labs(x="Simulation Condition",  y = "Willingness to help (logit)") +
+f2<-violin_coh_help +
+  labs(x="Condition",  y = "Logit") +
   theme(legend.position='none') +
   ylim(-0.5, 1.5) +
   scale_fill_manual(values=c(palette[2], palette[3])) +
-  scale_color_manual(values = c(palette[2], palette[3])) 
+  scale_color_manual(values = c(palette[2], palette[3])) +
+    theme(axis.title.y = element_blank(),
+        axis.text.y = element_blank(), 
+        axis.ticks.y = element_blank(),
+        panel.grid = element_blank())
 
 # Summary
 violin_bayes(plot_coh_help,HDI_range =  c(0.055, 0.945))[[2]]
@@ -1002,15 +1010,33 @@ p_direction(coh_posterior_help)
 posterior_summary(exp(coh_posterior_help), probs=c(0.055, 0.945))
 #--------------------------------------------------------------------------------------------------------------------------
 # Violin plots -- Detail and Coherence interaction effects
-plot_int_help<- cbind.data.frame("Detail" = posterior_det_help$`b_ConditionImagine:Detail_C`, "Coherence" = posterior_coh_help$`b_ConditionImagine:Coherence_C`)
+plot_int_help<- cbind.data.frame("Detail" = posterior_det_help$`b_ConditionImagine:Detail_C`,
+                                 "Coherence" = posterior_coh_help$`b_ConditionImagine:Coherence_C`)
+int_posterior_help <-plot_int_help
 plot_int_help<- plot_int_help %>% gather("Detail", "Coherence", key= Condition, value= Posterior)
 violin_int_help<- violin_bayes(plot_int_help, HDI_range= c(0.055, 0.945))[[1]]
-violin_int_help +
-  labs(x="Vivindess by Simulation Condition Interactions", y = "Willingness to help (logit)") +
+f3<-violin_int_help +
+  labs(x="Vividness by Condition Interactions", y = "Logit") +
   theme(legend.position = "none") +
   ylim(-0.5, 1.5) +  
   scale_fill_manual(values=c(palette[6], palette[7])) +
-  scale_color_manual(values = c(palette[6], palette[7]))
+  scale_color_manual(values = c(palette[6], palette[7])) +
+    theme(axis.title.y = element_blank(),
+        axis.text.y = element_blank(), 
+        axis.ticks.y = element_blank(),
+        panel.grid = element_blank())
+
+# Summary
+violin_bayes(plot_int_help,HDI_range =  c(0.055, 0.945))[[2]]
+# pd 
+p_direction(int_posterior_help)
+# OR
+posterior_summary(exp(int_posterior_help), probs=c(0.055, 0.945))
+
+
+
+grid.arrange(f1, f2, f3, ncol= 3)
+
 ```
 
 #### Trust
@@ -1081,8 +1107,8 @@ latent_SD(posterior_coh_trust)
 det_posterior_trust<- cbind.data.frame('Estimate Helping' = posterior_det_trust$b_Detail_C, "Imagine Helping" = posterior_det_trust$b_Detail_C + posterior_det_trust$`b_ConditionImagine:Detail_C`)
 plot_det_trust<- det_posterior_trust %>% gather("Estimate Helping", "Imagine Helping", key= Condition, value= Posterior)
 violin_det_trust<- violin_bayes(plot_det_trust, HDI_range= c(0.055, 0.945))[[1]]
-violin_det_trust +
-  labs(x="Simulation Condition", y = "Trust (logit)") +
+f4 <- violin_det_trust +
+  labs(x="Condition", y = "Logit") +
   theme(legend.position='none') +
   ylim(-0.7, 1.5) +
   scale_fill_manual(values=c(palette[2], palette[3])) +
@@ -1099,12 +1125,17 @@ posterior_summary(exp(det_posterior_trust), probs=c(0.055, 0.945))
 coh_posterior_trust<- cbind.data.frame('Estimate Helping' = posterior_coh_trust$b_Coherence_C, "Imagine Helping" = posterior_coh_trust$b_Coherence_C + posterior_coh_trust$`b_ConditionImagine:Coherence_C`)
 plot_coh_trust<- coh_posterior_trust %>% gather("Estimate Helping", "Imagine Helping", key= Condition, value= Posterior)
 violin_coh_trust<- violin_bayes(plot_coh_trust,HDI_range= c(0.055, 0.945))[[1]]
-violin_coh_trust +
-  labs(x="Simulation Condition",  y = "Trust (logit)") +
+f5<-violin_coh_trust +
+  labs(x="Condition",  y = "Logit") +
   theme(legend.position='none') +
   ylim(-0.7, 1.5) +
   scale_fill_manual(values=c(palette[2], palette[3])) +
-  scale_color_manual(values = c(palette[2], palette[3])) 
+  scale_color_manual(values = c(palette[2], palette[3])) +
+  theme(axis.title.y = element_blank(),
+        axis.text.y = element_blank(), 
+        axis.ticks.y = element_blank(),
+        panel.grid = element_blank())
+
 
 # Summary
 violin_bayes(plot_coh_trust,HDI_range =  c(0.055, 0.945))[[2]]
@@ -1114,15 +1145,31 @@ p_direction(coh_posterior_trust)
 posterior_summary(exp(coh_posterior_trust), probs=c(0.055, 0.945))
 #--------------------------------------------------------------------------------------------------------------------------
 # Violin plots -- Detail and Coherence interaction effects
-plot_int_trust<- cbind.data.frame("Detail" = posterior_det_trust$`b_ConditionImagine:Detail_C`, "Coherence" = posterior_coh_trust$`b_ConditionImagine:Coherence_C`)
+plot_int_trust<- cbind.data.frame("Detail" = posterior_det_trust$`b_ConditionImagine:Detail_C`, 
+                                  "Coherence" = posterior_coh_trust$`b_ConditionImagine:Coherence_C`)
+int_posterior_trust <- plot_int_trust
 plot_int_trust<- plot_int_trust %>% gather("Detail", "Coherence", key= Condition, value= Posterior)
 violin_int_trust<- violin_bayes(plot_int_trust, HDI_range= c(0.055, 0.945))[[1]]
-violin_int_trust +
-  labs(x="Vivindess by Simulation Condition Interactions", y =  "Trust (logit)") +
+f6<-violin_int_trust +
+  labs(x="Vivindess by Condition Interactions", y =  "Trust (logit)") +
   theme(legend.position = "none") +
-  ylim(-0.5, 1.5) +  
+  ylim(-0.7, 1.5) +  
   scale_fill_manual(values=c(palette[6], palette[7])) +
-  scale_color_manual(values = c(palette[6], palette[7]))
+  scale_color_manual(values = c(palette[6], palette[7])) +
+  theme(axis.title.y = element_blank(),
+        axis.text.y = element_blank(), 
+        axis.ticks.y = element_blank(),
+        panel.grid = element_blank())
+
+
+# Summary
+violin_bayes(plot_int_trust,HDI_range =  c(0.055, 0.945))[[2]]
+# pd 
+p_direction(int_posterior_trust)
+# OR
+posterior_summary(exp(int_posterior_trust), probs=c(0.055, 0.945))
+
+grid.arrange(f4,f5, f6, ncol=3)
 ```
 
 
